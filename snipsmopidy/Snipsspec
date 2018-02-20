@@ -1,6 +1,9 @@
-package_name: snipsMopidy
+package_name: snipsmopidy
 class_name: SnipsMopidy
 description: Mopidy skill for Snips
+params:
+  mopidy_host: YOUR_MOPIDY_IP
+  spotify_refresh_token: YOUR_REFRESH_TOKEN
 notifications:
   - name: start_listening
     action: |
@@ -8,17 +11,8 @@ notifications:
       snips.skill.set_to_low_volume()
       %}
 intents:
-  - intent: radioOn
-    action: |
-      {%
-      if len(snips.intent.radio_name):
-        radio_name = snips.intent.radio_name[0]
-        snips.skill.turn_on_radio(radio_name)
-
-      snips.skill.set_to_previous_volume()
-      %}
   - intent: speakerInterrupt
-    action: "pause_Mopidy"
+    action: "pause_mopidy"
   - intent: volumeUp
     action: |
       {%
@@ -26,6 +20,8 @@ intents:
       if snips.intent.volume_higher:
         volume_higher = snips.intent.volume_higher[0]
         snips.skill.volume_up(volume_higher)
+      else:
+        snips.skill.volume_up(None)
       %}
   - intent: volumeDown
     action: |
@@ -34,6 +30,8 @@ intents:
       if len(snips.intent.volume_lower):
         volume_lower = snips.intent.volume_lower[0]
         snips.skill.volume_down(volume_lower)
+      else:
+        snips.skill.volume_down(None)
       %}
   - intent: playPlaylist
     action: |
@@ -84,7 +82,7 @@ intents:
   - intent: getInfos
     action: |
       {%
-        snips.skill.set_to_previous_volume(); tts_service.speak("This is {} by {} on the album {}".format(*snips.skill.get_info()))
+        snips.skill.set_to_previous_volume(); snips.dialogue.speak("This is {} by {} on the album {}".format(*snips.skill.get_info()))
       %}
   - intent: "*"
     action: |

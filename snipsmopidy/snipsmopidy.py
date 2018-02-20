@@ -3,15 +3,14 @@
 
 from __future__ import unicode_literals
 
+from mpd import MPDClient
+from mpd import ConnectionError
+from spotify import SpotifyClient
 import time
 
-from random import shuffle
-
-from mpd import MPDClient
-from .spotify import SpotifyClient
-
-MAX_VOLUME = 70
+MAX_VOLUME = 100
 GAIN = 4
+MPD_PORT = 6600
 
 
 class SnipsMopidy:
@@ -20,14 +19,15 @@ class SnipsMopidy:
     :param mopidy_host: The hostname of the Mopidy player
     """
 
-    def __init__(self, spotify_refresh_token=None, speaker_index=None,
-                 mopidy_host='127.0.0.1', locale=None):
+    def __init__(self, spotify_refresh_token=None, mopidy_host='127.0.0.1', locale=None):
+        self.host = mopidy_host
         self.client = MPDClient()
-        self.client.connect(mopidy_host, 6600)
-        print(self.client.mpd_version)
-        print(self.client.find("any", "house"))
+        self.client.connect(self.host, MPD_PORT)
         status = self.client.status()
-        self.previous_volume = status.get('volume')
+        self.previous_volume = int(status.get('volume'))
+        self.max_volume = MAX_VOLUME
+        if spotify_refresh_token is not None:
+            self.spotify = SpotifyClient(spotify_refresh_token)
 
     def pause_mopidy(self):
         self.client.pause(1)
@@ -35,21 +35,24 @@ class SnipsMopidy:
     def volume_up(self, level):
         if self.client is None:
             return
-        level = int(level) if level is not None else 100
+        level = int(level)*10 if level is not None else 10
         status = self.client.status()
-        current_volume = int(status.get('volume', '50'))
+        current_volume = int(status.get('volume'))
         self.client.setvol(min(
             current_volume + GAIN * level,
             self.max_volume))
-        self.client.play()
+        if status.get('state') != 'play':
+            self.client.play()
 
     def volume_down(self, level):
         if self.client is None:
             return
-        level = int(level) if level is not None else 100
-        self.client.setvol(GAIN * level)
-        self.client.play()
-        print(self.client.volume)
+        level = int(level)*10 if level is not None else 10
+        status = self.client.status()
+        current_volume = int(status.get('volume'))
+        self.client.setvol(current_volume - GAIN * level)
+        if status.get('state') != 'play':
+            self.client.play()
 
     def set_volume(self, volume_value):
         if self.client is None:
@@ -58,14 +61,21 @@ class SnipsMopidy:
         self.client.play()
 
     def set_to_low_volume(self):
-        if self.client is None:
-            return
-        status = self.client.status()
-        if status.get('state') != 'play':
-            return None
-        self.previous_volume = status.get('volume')
-        self.client.setvol(min(40, status.get('volume')))
-        self.client.play()
+        try:
+            if self.client is None:
+                return
+            status = self.client.status()
+            if status.get('state') != 'play':
+                return None
+            current_volume = int(status.get('volume'))
+            self.previous_volume = current_volume
+            self.client.setvol(min(30, current_volume))
+            if status.get('state') != 'play':
+                self.client.play()
+        except ConnectionError:
+            print("Connection Error. Trying to reconnect with mpd")
+            self.client.connect(self.host, MPD_PORT)
+            self.set_to_low_volume()
 
     def set_to_previous_volume(self):
         if self.client is None:
@@ -82,48 +92,30 @@ class SnipsMopidy:
             return
         self.client.stop()
 
-    def turn_on_radio(self, radio_name):
-        if self.client is None:
-            return None
-        if self.tunein_service is None:
-            return None
-        res = self.tunein_service.search('stations', term=radio_name)
-        if 'mediaMetadata' not in res:
-            return "radio not found"
-        if isinstance(res['mediaMetadata'], list):
-            radio_id = res['mediaMetadata'][0]['id']
-        elif isinstance(res['mediaMetadata'], dict):
-            radio_id = res['mediaMetadata']['id']
-        else:
-            raise TypeError("Unknown type for tune in search metadata")
-        radio_uri = self.tunein_service.get_media_uri(radio_id)
-        try:
-            self.client.play_uri(radio_uri.replace('http', 'x-rincon-mp3radio'))
-        except Exception:
-            # unknown problem playing radio uri...
-            return None
-
     def play_playlist(self, name, _shuffle=False):
         if self.client is None:
-            return
+            return None
         if self.spotify is None:
-            return
-        tracks = self.spotify.get_tracks_from_playlist(name)
+            return None
+        tracks = self.spotify.get_playlist(name)
         if tracks is None:
             return None
         self.client.stop()
         self.client.clear()
-        if _shuffle:
-            shuffle(tracks)
         for track in tracks:
-            self.client.add(track['track']['uri'])
+            try:
+                self.client.add(track['track']['uri'])
+            except Exception:
+                print("Song not available in catalogue")
+        if _shuffle:
+            self.client.shuffle()
         self.client.play()
 
     def play_artist(self, name):
         if self.client is None:
-            return
+            return None
         if self.spotify is None:
-            return
+            return None
         tracks = self.spotify.get_top_tracks_from_artist(name)
         if tracks is None:
             return None
@@ -143,10 +135,10 @@ class SnipsMopidy:
             return None
         self.client.stop()
         self.client.clear()
-        if _shuffle:
-            shuffle(tracks)
         for track in tracks:
             self.client.add(track['uri'])
+        if _shuffle:
+            self.client.shuffle()
         self.client.play()
 
     def play_song(self, name):
@@ -180,16 +172,13 @@ class SnipsMopidy:
 
     def get_info(self):
         # Get info about currently playing tune
-        status = self.client.status()
-        info = status.get('song')
-        return info['title'], None, None
+        info = self.client.currentsong()
+        return info['title'], info['artist'], info['album']
 
     def add_song(self):
         # Save song in spotify
-        status = self.client.status()
-        title = status.get('song')
-        self.spotify.add_song(None, title)
+        info = self.client.currentsong()
+        self.spotify.add_song(info['artist'], info['title'])
 
     def play(self):
-        # Save song in spotify
         self.client.play()

@@ -67,24 +67,6 @@ class SpotifyClient():
                 break
             n_found_playlists = len(self.user_playlists)
 
-    def get_tracks_from_playlist(self, name):
-        self.refresh_access_token()
-        try:
-            _r = requests.get(
-                self.user_playlists[name]['tracks']['href'],
-                params={
-                    'limit': 100
-                },
-                headers={
-                    "Authorization": "Bearer {}".format(self.access_token),
-                })
-        except KeyError:
-            print "Unknown playlist {}".format(name)
-            return None
-        if 'items' in _r.json():
-            return _r.json()['items']
-        return None
-
     def dump_favorite(self, mode, n_items, output_name):
         if mode not in ['artists', 'tracks']:
             raise ValueError("mode argument should be 'artists' or 'tracks")
@@ -148,6 +130,49 @@ class SpotifyClient():
         except Exception:
             return None
 
+    def get_tracks_href_from_playlist(self, playlist_name):
+        try:
+            return self.user_playlists[playlist_name.lower()]['tracks']['href']
+        except KeyError:
+            print("Unknown user playlist, trying to find a similar playlist")
+            # Get any playlist related to the name given
+            self.refresh_access_token()
+            try:
+                _r = requests.get(
+                    'https://api.spotify.com/v1/search',
+                    params={
+                        'q': playlist_name,
+                        'type': 'playlist'
+                    },
+                    headers={
+                        "Authorization": "Bearer {}".format(self.access_token)
+                    }
+                )
+                # return best match
+                tracks_href = _r.json()['playlists']['items'][0]['tracks']['href']
+                return tracks_href
+            except Exception:
+                return None
+
+    def get_tracks_from_playlist(self, tracks_href):
+        # print(tracks_href)
+        self.refresh_access_token()
+        _r = requests.get(
+            tracks_href,
+            params={
+                'limit': 100
+            },
+            headers={
+                "Authorization": "Bearer {}".format(self.access_token),
+            })
+        if 'items' in _r.json():
+            return _r.json()['items']
+        return None
+
+    def get_playlist(self, playlist_name):
+        tracks_href = self.get_tracks_href_from_playlist(playlist_name)
+        return self.get_tracks_from_playlist(tracks_href)
+
     def get_track(self, song):
         self.refresh_access_token()
         try:
@@ -193,6 +218,8 @@ class SpotifyClient():
             return None
 
     def add_song(self, artist, song):
+        # Pick first artist when more than one artist featured in the song. Format: Artist1;Artist2
+        artist = artist.split(';')[0]
         self.refresh_access_token()
         # First, get the id of the song
         track = self.get_track("track:" + '"' + song + '"' + ' artist:' + '"' + artist + '"')
@@ -207,4 +234,5 @@ class SpotifyClient():
                 }
             )
         except Exception:
+            print("The track could not be added")
             return None

@@ -7,9 +7,9 @@ import requests
 
 class SpotifyClient():
 
-    def __init__(self, spotify_refresh_token):
-        self.client_id = "765e1498b29949c5a36dbcae4eea8330"
-        self.client_secret = "72e1fb080f3a49f99b357fd6b8d79cd7"
+    def __init__(self, spotify_refresh_token, client_id, client_secret):
+        self.client_id = client_id
+        self.client_secret = client_secret
         self.refresh_token = spotify_refresh_token
         self.get_user_playlists()
         self.get_user_id()

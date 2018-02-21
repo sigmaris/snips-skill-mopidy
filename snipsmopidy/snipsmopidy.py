@@ -19,7 +19,8 @@ class SnipsMopidy:
     :param mopidy_host: The hostname of the Mopidy player
     """
 
-    def __init__(self, spotify_refresh_token=None, mopidy_host='127.0.0.1', locale=None):
+    def __init__(self, spotify_refresh_token=None, spotify_client_id=None, spotify_client_secret=None,
+                 mopidy_host='192.168.171.89', locale=None):
         self.host = mopidy_host
         self.client = MPDClient()
         self.client.connect(self.host, MPD_PORT)
@@ -27,7 +28,7 @@ class SnipsMopidy:
         self.previous_volume = int(status.get('volume'))
         self.max_volume = MAX_VOLUME
         if spotify_refresh_token is not None:
-            self.spotify = SpotifyClient(spotify_refresh_token)
+            self.spotify = SpotifyClient(spotify_refresh_token, spotify_client_id, spotify_client_secret)
 
     def pause_mopidy(self):
         self.client.pause(1)

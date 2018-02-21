@@ -3,7 +3,9 @@ class_name: SnipsMopidy
 description: Mopidy skill for Snips
 params:
   mopidy_host: YOUR_MOPIDY_IP
-  spotify_refresh_token: YOUR_REFRESH_TOKEN
+  spotify_refresh_token: YOUR_SPOTIFY_REFRESH_TOKEN
+  spotify_client_id: YOUR_SPOTIFY_CLIENT_ID
+  spotify_client_secret: YOUR_SPOTIFY_CLIENT_SECRET
 notifications:
   - name: start_listening
     action: |

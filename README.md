@@ -43,11 +43,16 @@ enabled = false
 [spotify]
 username = YOUR_USERAME
 password = YOUR_PASSWORD
-client_id = 765e1498b29949c5a36dbcae4eea8330
-client_secret = 72e1fb080f3a49f99b357fd6b8d79cd7
+client_id = YOUR_CLIENT_ID
+client_secret = YOUR_CLIENT_SECRET
 ~~~
 
-Run Mopidy in the terminal
+In order to get a Spotify client Id and client secret you need to:
+
+- [Create a Spotify application](https://developer.spotify.com/my-applications/)
+- Retrieve the `client_id` and the `client_secret` from the application
+
+Finally, run Mopidy in the terminal
 
 ~~~
 mopidy
@@ -66,6 +71,8 @@ skills:
     param:
       mopidy_host: YOUR_IP # defaults to localhost
       spotify_refresh_token: YOUR_SPOTIFY_REFRESH_TOKEN
+      spotify_client_id: YOUR_SPOTIFY_CLIENT_ID
+      spotify_client_secret: YOUR_SPOTIFY_CLIENT_SECRET
 ~~~
 
 ## Usage
@@ -75,7 +82,7 @@ The skill allows you to control [Mopidy](http://musicpartners.Mopidy.com/docs?q=
 ~~~python
 from snipsMopidy.snipsMopidy import SnipsMopidy
 
-Mopidy = SnipsMopidy(SPOTIFY_REFRESH_TOKEN)
+Mopidy = SnipsMopidy(SPOTIFY_REFRESH_TOKEN, SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET)
 Mopidy.play_artist("John Coltrane")
 ~~~
 

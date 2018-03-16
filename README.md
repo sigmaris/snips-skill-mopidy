@@ -66,13 +66,13 @@ It is recommended that you use this skill with the [Snips Skills Manager](https:
 
 ~~~yaml
 skills:
-  - pip: https://github.com/snipsco/snips-skills-mopidy
+  - pip: https://github.com/snipsco/snips-skill-mopidy
     package_name: snipsmopidy
-    param:
-      mopidy_host: YOUR_IP # defaults to localhost
-      spotify_refresh_token: YOUR_SPOTIFY_REFRESH_TOKEN
-      spotify_client_id: YOUR_SPOTIFY_CLIENT_ID
-      spotify_client_secret: YOUR_SPOTIFY_CLIENT_SECRET
+    params:
+      mopidy_host: <YOUR_IP> # defaults to localhost
+      spotify_refresh_token: <YOUR_SPOTIFY_REFRESH_TOKEN>
+      spotify_client_id: <YOUR_SPOTIFY_CLIENT_ID>
+      spotify_client_secret: <YOUR_SPOTIFY_CLIENT_SECRET>
 ~~~
 
 ## Usage
@@ -80,9 +80,9 @@ skills:
 The skill allows you to control [Mopidy](http://musicpartners.Mopidy.com/docs?q=node/442) running in a computer like a Raspberry Pi. You can use it as follows:
 
 ~~~python
-from snipsMopidy.snipsMopidy import SnipsMopidy
+from snipsmopidy.snipsmopidy import SnipsMopidy
 
-Mopidy = SnipsMopidy(SPOTIFY_REFRESH_TOKEN, SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET)
+Mopidy = SnipsMopidy(<SPOTIFY_REFRESH_TOKEN>, <SPOTIFY_CLIENT_ID>, <SPOTIFY_CLIENT_SECRET>)
 Mopidy.play_artist("John Coltrane")
 ~~~
 

@@ -14,7 +14,7 @@ notifications:
       %}
 intents:
   - intent: speakerInterrupt
-    action: "pause_mopidy"
+    action: "pause"
   - intent: volumeUp
     action: |
       {%

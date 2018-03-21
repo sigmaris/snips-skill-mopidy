@@ -22,15 +22,26 @@ class SnipsMopidy:
     def __init__(self, spotify_refresh_token=None, spotify_client_id=None, spotify_client_secret=None,
                  mopidy_host='127.0.0.1', locale=None):
         self.host = mopidy_host
-        self.client = MPDClient()
-        self.client.connect(self.host, MPD_PORT)
+        connexion_established = False
+        while not connexion_established:
+            self.client = MPDClient()
+            try:
+                self.client.connect(self.host, MPD_PORT)
+                connexion_established = True
+                break
+            except Exception as ex:
+                print("Mopidy is not yet available, please wait or be sure it is running typing: "
+                      "systemctl status mopidy")
+                print("...")
+                time.sleep(5)
+
         status = self.client.status()
         self.previous_volume = int(status.get('volume'))
         self.max_volume = MAX_VOLUME
         if spotify_refresh_token is not None:
             self.spotify = SpotifyClient(spotify_refresh_token, spotify_client_id, spotify_client_secret)
 
-    def pause_mopidy(self):
+    def pause(self):
         self.client.pause(1)
 
     def volume_up(self, level):
@@ -88,7 +99,7 @@ class SnipsMopidy:
         if status.get('state') != 'play':
             self.client.play()
 
-    def stop_mopidy(self):
+    def stop(self):
         if self.client is None:
             return
         self.client.stop()

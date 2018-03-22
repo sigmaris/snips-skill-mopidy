@@ -2,10 +2,7 @@ package_name: snipsmopidy
 class_name: SnipsMopidy
 description: Mopidy skill for Snips
 params:
-  mopidy_host: YOUR_MOPIDY_IP
-  spotify_refresh_token: YOUR_SPOTIFY_REFRESH_TOKEN
-  spotify_client_id: YOUR_SPOTIFY_CLIENT_ID
-  spotify_client_secret: YOUR_SPOTIFY_CLIENT_SECRET
+  mopidy_host: <MOPIDY_HOST>
 notifications:
   - name: start_listening
     action: |
@@ -74,20 +71,12 @@ intents:
       {% snips.skill.play(); snips.skill.set_to_previous_volume() %}
   - intent: nextSong
     action: |
-      {% snips.skill.play_next_item_in_queue(); snips.skill.set_to_previous_volume() %}
+      {% snips.skill.next_song(); snips.skill.set_to_previous_volume() %}
   - intent: previousSong
     action: |
-      {% snips.skill.play_previous_item_in_queue(); snips.skill.set_to_previous_volume() %}
-  - intent: addSong
-    action: |
-      {% snips.skill.add_song(); snips.skill.set_to_previous_volume() %}
+      {% snips.skill.previous_song(); snips.skill.set_to_previous_volume() %}
   - intent: getInfos
     action: |
       {%
         snips.skill.set_to_previous_volume(); snips.dialogue.speak("This is {} by {} on the album {}".format(*snips.skill.get_info()))
-      %}
-  - intent: "*"
-    action: |
-      {%
-        snips.skill.set_to_previous_volume();
       %}

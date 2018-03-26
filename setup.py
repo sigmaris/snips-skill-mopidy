@@ -2,13 +2,13 @@ from setuptools import setup
 
 setup(
     name='snipsmopidy',
-    version='1.0.1',
-    description='Mopidy skill for Snips',
-    author='Pau',
-    url='https://github.com/snipsco/snips-skill-mopidy',
+    version='1.0.0',
+    description='Snips skill to control Mopidy',
+    author='pau.fabregat-pappaterra@snips.ai',
+    url='https://github.com/snipsco-forks/snips-skill-mopidy',
     download_url='',
     license='MIT',
-    install_requires=['mopidy, requests'],
+    install_requires=['mopidy', 'requests'],
     test_suite="tests",
     keywords=['snips', 'mopidy'],
     packages=['snipsmopidy'],

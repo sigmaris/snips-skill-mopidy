@@ -102,7 +102,12 @@ Mopidy.play_artist("John Coltrane")
 
 The `SPOTIFY_REFRESH_TOKEN` is used for playing music from Spotify. You can obtain it from the [Snips Spotify Login](https://snips-spotify-login.herokuapp.com) page.
 
+
+## Contributing
+
+Please see the [Contribution Guidelines](https://github.com/snipsco/snips-skill-mopidy/blob/master/CONTRIBUTING.md).
+
 ## Copyright
 
-This skill is provided by [Snips](https://www.snips.ai) as Open Source software. See [LICENSE.txt](https://github.com/snipsco/snips-skill-hue/blob/master/LICENSE.txt) for more
+This skill is provided by [Snips](https://www.snips.ai) as Open Source software. See [LICENSE.txt](https://github.com/snipsco/snips-skill-mopidy/blob/master/LICENSE.txt) for more
 information.

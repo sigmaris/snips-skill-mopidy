@@ -1,5 +1,5 @@
 
-# Mopidy skill for Snips
+# Snips Skill Mopidy
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/snipsco/snips-skill-hue/master/LICENSE.txt)
 

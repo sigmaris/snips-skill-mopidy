@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='snipsmopidy',
-    version='1.0.0',
+    version='0.1.0',
     description='Snips skill to control Mopidy',
     author='pau.fabregat-pappaterra@snips.ai',
     url='https://github.com/snipsco-forks/snips-skill-mopidy',

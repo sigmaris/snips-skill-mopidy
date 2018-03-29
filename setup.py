@@ -8,7 +8,7 @@ setup(
     url='https://github.com/snipsco-forks/snips-skill-mopidy',
     download_url='',
     license='MIT',
-    install_requires=['mopidy', 'requests'],
+    install_requires=['mopidy', 'requests', 'mock'],
     test_suite="tests",
     keywords=['snips', 'mopidy'],
     packages=['snipsmopidy'],

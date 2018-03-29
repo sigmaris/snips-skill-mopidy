@@ -1,6 +1,8 @@
 
 # Snips Skill Mopidy
 
+[![Latest Version](https://img.shields.io/pypi/v/snipsmopidy.svg)](https://pypi.python.org/pypi/snipsmopidy/)
+[![Build Status](https://travis-ci.org/snipsco-forks/snips-skill-mopidy.svg)](https://travis-ci.org/snipsco-forks/snips-skill-mopidy)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/snipsco/snips-skill-mopidy/master/LICENSE.txt)
 
 Kudos to [tschmidty69](https://github.com/tschmidty69) for his initial contribution.

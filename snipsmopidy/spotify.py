@@ -7,10 +7,9 @@ import requests
 
 class SpotifyClient():
 
-    def __init__(self, spotify_refresh_token, client_id, client_secret):
+    def __init__(self, client_id, client_secret):
         self.client_id = client_id
         self.client_secret = client_secret
-        self.refresh_token = spotify_refresh_token
         self.get_user_playlists()
         self.get_user_id()
 
@@ -18,11 +17,9 @@ class SpotifyClient():
         _r = requests.post(
             "https://accounts.spotify.com/api/token",
             data={
-                "client_id": self.client_id,
-                "client_secret": self.client_secret,
-                "grant_type": "refresh_token",
-                "refresh_token": self.refresh_token
-            })
+                "grant_type": "client_credentials",
+            },
+            auth=(self.client_id, self.client_secret))
         if 'access_token' in _r.json():
             self.access_token = _r.json()['access_token']
         else:

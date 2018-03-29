@@ -84,7 +84,6 @@ skills:
     package_name: snipsmopidy
     params:
       mopidy_host: <MOPIDY_IP> # defaults to localhost
-      spotify_refresh_token: <SPOTIFY_REFRESH_TOKEN>
       spotify_client_id: <SPOTIFY_CLIENT_ID>
       spotify_client_secret: <SPOTIFY_CLIENT_SECRET>
 ~~~
@@ -96,12 +95,9 @@ The skill allows you to control [Mopidy](http://musicpartners.Mopidy.com/docs?q=
 ~~~python
 from snipsmopidy.snipsmopidy import SnipsMopidy
 
-Mopidy = SnipsMopidy(SPOTIFY_REFRESH_TOKEN, SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET)
+Mopidy = SnipsMopidy(SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET)
 Mopidy.play_artist("John Coltrane")
 ~~~
-
-The `SPOTIFY_REFRESH_TOKEN` is used for playing music from Spotify. You can obtain it from the [Snips Spotify Login](https://snips-spotify-login.herokuapp.com) page.
-
 
 ## Contributing
 

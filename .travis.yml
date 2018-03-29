@@ -1,0 +1,16 @@
+language: python
+python:
+- '2.7'
+cache: pip
+install:
+- python setup.py install
+script:
+- python setup.py test
+deploy:
+  provider: pypi
+  user: snips
+  password:
+    secure: ebF7iWgMbW+n4i4r8pg7M7NfrAKpFfuQJPpi8RnYQuhDB8WyQktuvQIbOD2EYnqTOAhfhg2KXkPWEMkhf0b0ech8qn0cmHK0pdPQbja6r+lyeqUkjGVwUkrKLCkQEmVXWccEixKLFcGn1KyGe5ZztU/Y6IzcHAF5BEZw5NY5VA83NpiGTKDXr8dK4YuULLAe64QzAgpPdMInxkdfBY4DI2VkbTyfrfHPROG8vykm+BgqPe1rxhWjGanNvUhbun/+2LHLSJK4Yck4GjzXIASy8jJlDosQaRveA//nXwYzh/tJAEUjwnLZx4F5jEOY3ku3fkLgOwWEcQU5apk62lJeoq0hO0jTI2+5ZgLVM+UyyK1Wx6giV8LQ4XlFTdiKHWCGKCWGTeJdiQy2+hzZ4NeEulR6XRv4jT35Kn4KZrGh7mlOKtrn12BDwGDLTxddlnyzJ+/38rDxRI+WNfPcVxJLyjOCcsq7XaZ50pI6ZVAFc7qYfzQSZqA1FEO9tenjpFd2mcwmLiy85Zw7fIkJQuc5lZR2LceAEmAG4Ow2bD0MB828FAjItWXYozcIWCluFczl8F+i9QMdW2sIX084EwgntgNcm1hRjoayDhzJmNuhRDFsz9r8SpE7ktVEQg0Kryn2sxMuZUHnuLyqffwbvRnsAAWldC3UYVccvJpLJTipn1E=
+  on:
+    tags: true
+    branch: master

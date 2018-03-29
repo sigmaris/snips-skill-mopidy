@@ -1,8 +1,7 @@
 package_name: snipsmopidy
 class_name: SnipsMopidy
 description: Mopidy skill for Snips
-params:
-  mopidy_host: <MOPIDY_HOST>
+parameters: ["mopidy_host"]
 notifications:
   - name: start_listening
     action: |

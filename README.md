@@ -76,7 +76,7 @@ You would also be able to manage the service as any other systemd service using 
 (pi) $ sudo systemctl restart mopidy
 ~~~
 
-## Snips Skills Manager
+## Snips Manager
 
 It is recommended that you use this skill with the [Snips Manager](https://github.com/snipsco/snipsmanager). Simply add the following section to your [Snipsfile](https://github.com/snipsco/snipsmanager/wiki/The-Snipsfile):
 

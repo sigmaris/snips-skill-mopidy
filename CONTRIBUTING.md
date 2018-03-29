@@ -1,4 +1,4 @@
-#How to Contribute
+# How to Contribute
 
 Contributions are welcome! Not familiar with the codebase yet? No problem!
 There are many ways to contribute to open source projects: reporting bugs,
@@ -8,7 +8,7 @@ new features and patches.
 ## Getting Started
 
 - Make sure you have a GitHub account.
-- Open a [new issue](https://github.com/snipsco/snips-skill-owm/issues), assuming one does not already exist.
+- Open a [new issue](https://github.com/snipsco/snips-skill-mopidy/issues), assuming one does not already exist.
 - Clearly describe the issue including steps to reproduce when it is a bug.
 
 ## Making Changes

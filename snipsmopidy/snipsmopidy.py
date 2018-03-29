@@ -17,6 +17,9 @@ class SnipsMopidy:
     def __init__(self, mopidy_host='127.0.0.1', locale=None):
         self.client = MopidyClient(mopidy_host)
 
+    def get_client(self):
+        return self.client
+
     def play(self):
         self.client.play()
 
@@ -107,7 +110,7 @@ class SnipsMopidy:
             self.client.play_first()
 
     def play_genre(self, name, shuffle=False):
-        is_set = self.client.set_search(self.client.search_artist(name))
+        is_set = self.client.set_search(self.client.search_genre(name))
         if is_set:
             if shuffle:
                 self.client.shuffle()

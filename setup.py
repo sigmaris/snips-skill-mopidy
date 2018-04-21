@@ -8,7 +8,7 @@ setup(
     url='https://github.com/sigmaris/snips-skill-mopidy',
     download_url='',
     license='MIT',
-    install_requires=['python-mpd2', 'fuzzywuzzy', 'python-Levenshtein', 'paho-mqtt'],
+    install_requires=['python-mpd2', 'fuzzywuzzy', 'python-Levenshtein', 'paho-mqtt', 'requests'],
     test_suite="tests",
     keywords=['snips', 'mopidy'],
     packages=['snipsmopidy'],

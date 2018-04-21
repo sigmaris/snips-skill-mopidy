@@ -27,12 +27,23 @@ def hotword_detected(func=None):
         return decorate
 
 
+def session_ended(func=None):
+    def decorate(f):
+        f._handles_session_ended = True
+        return f
+    if func is not None:
+        return decorate(func)
+    else:
+        return decorate
+
+
 HotwordDetected = collections.namedtuple('HotwordDetected', ('hotword_id', 'model_id', 'site_id'))
 IntentDetected = collections.namedtuple(
     'IntentDetected', ('session_id', 'site_id', 'custom_data', 'input', 'intent_name', 'probability', 'slots')
 )
 Slot = collections.namedtuple('Slot', ('slot_name', 'raw_value', 'value', 'value_kind', 'range', 'entity', 'text'))
 Range = collections.namedtuple('Range', ('start', 'end'))
+SessionEnded = collections.namedtuple('SessionEnded', ('session_id', 'site_id', 'custom_data', 'reason', 'error'))
 
 
 class SnipsListener(object):
@@ -43,6 +54,7 @@ class SnipsListener(object):
         self.client = None
         self._intent_handlers = collections.defaultdict(list)
         self._hotword_detected_handlers = set()
+        self._session_ended_handlers = set()
         for attrname in dir(self):
             if attrname[:2] != '__':
                 attr = getattr(self, attrname)
@@ -52,6 +64,8 @@ class SnipsListener(object):
                             self._intent_handlers[intent_desc].append(attr)
                     if getattr(attr, '_handles_hotword_detected', False):
                         self._hotword_detected_handlers.add(attr)
+                    if getattr(attr, '_handles_session_ended', False):
+                        self._session_ended_handlers.add(attr)
 
     # The callback for when the client receives a CONNACK response from the server.
     def on_connect(self, client, userdata, flags, rc):
@@ -59,9 +73,10 @@ class SnipsListener(object):
 
         # Subscribing in on_connect() means that if we lose the connection and
         # reconnect then subscriptions will be renewed.
-        # TODO: only subscribe to recognized topics
+        # TODO: only subscribe to recognized intents
         client.subscribe("hermes/intent/#")
         client.subscribe("hermes/hotword/+/detected")
+        client.subscribe("hermes/dialogueManager/sessionEnded")
         # client.subscribe("hermes/nlu/#")
         # client.subscribe("hermes/asr/#")
         # client.subscribe("hermes/dialogueManager/#")
@@ -105,7 +120,7 @@ class SnipsListener(object):
             intent_obj = IntentDetected(
                 session_id=data['sessionId'],
                 site_id=data['siteId'],
-                custom_data=data['customData'],
+                custom_data=data.get('customData'),
                 input=data['input'],
                 intent_name=intent_data['intentName'],
                 probability=intent_data['probability'],
@@ -134,6 +149,17 @@ class SnipsListener(object):
         data = json.loads(msg.payload.decode())
         for h in self._hotword_detected_handlers:
             h(HotwordDetected(hotword_id, data['modelId'], data['siteId']))
+
+    def _handle_session_ended(self, client, userdata, msg):
+        topic = msg.topic
+        LOG.debug(topic+" "+str(msg.payload.decode()))
+        data = json.loads(msg.payload.decode())
+        termination = data['termination']
+        for h in self._session_ended_handlers:
+            h(SessionEnded(
+                data['sessionId'], data['siteId'], data.get('customData'),
+                termination['reason'], termination.get('error')
+            ))
 
     # @intent('convertUnits', 'sigmaris')
     # def demo_intent(self, data):
@@ -213,6 +239,7 @@ class SnipsListener(object):
         # TODO: intent namespacing? maybe that goes in subscription code
         self.client.message_callback_add("hermes/intent/#", self._handle_intent)
         self.client.message_callback_add("hermes/hotword/+/detected", self._handle_hotword_detected)
+        self.client.message_callback_add("hermes/dialogueManager/sessionEnded", self._handle_session_ended)
 
         # This responds specifically to the setTimer intent
         # client.message_callback_add("hermes/intent/setTimer", setTimer)
@@ -264,65 +291,64 @@ class SnipsMopidyListener(SnipsListener):
         else:
             self.skill.volume_down(data.site_id, None)
 
-    @intent('playPlaylist')
-    def play_playlist(self, data):
-        if len(snips.intent.playlist_name):
-            playlist_name = snips.intent.playlist_name[0]
-        # playlist_lecture_mode = snips.intent.playlist_lecture_mode[0] if len(snips.intent.playlist_lecture_mode) else None
-        snips.skill.play_playlist(snips.site_id, playlist_name, _shuffle=(
-                    len(snips.intent.playlist_lecture_mode) and snips.intent.playlist_lecture_mode[0] == "shuffle"))
+    # @intent('playPlaylist')
+    # def play_playlist(self, data):
+    #     if 'playlist_name' in data.slots:
+    #         playlist_name = data.slots['playlist_name']
+    #     # playlist_lecture_mode = snips.intent.playlist_lecture_mode[0] if len(snips.intent.playlist_lecture_mode) else None
+    #     self.skill.play_playlist(data.site_id, playlist_name, _shuffle=(
+    #                 len(snips.intent.playlist_lecture_mode) and snips.intent.playlist_lecture_mode[0] == "shuffle"))
 
-        snips.skill.set_to_previous_volume(snips.site_id)
-    %}
-    - intent: playArtist
-    action: |
-    { %
-    if len(snips.intent.artist_name):
-        artist_name = snips.intent.artist_name[0]
-    snips.skill.play_artist(snips.site_id, artist_name)
-    snips.skill.set_to_previous_volume(snips.site_id)
-    %}
-    - intent: playSong
-    action: |
-    { %
-    if len(snips.intent.song_name):
-        snips.skill.play_song(snips.site_id, snips.intent.song_name)
-    snips.skill.set_to_previous_volume(snips.site_id)
-    %}
-    - intent: playAlbum
-    action: |
-    { %
-    if len(snips.intent.album_name):
-        album_name = snips.intent.album_name[0]
-    snips.skill.play_album(snips.site_id, album_name, _shuffle=(
-                len(snips.intent.album_lecture_mode) and snips.intent.album_lecture_mode[0] == "shuffle"))
+    #     self.skill.set_to_previous_volume(snips.site_id)
 
-    snips.skill.set_to_previous_volume(snips.site_id)
-    %}
-    - intent: resumeMusic
-    action: |
-    { % snips.skill.play(snips.site_id);
-    snips.skill.set_to_previous_volume(snips.site_id) %}
-    - intent: nextSong
-    action: |
-    { % snips.skill.play_next_item_in_queue(snips.site_id);
-    snips.skill.set_to_previous_volume(snips.site_id) %}
-    - intent: previousSong
-    action: |
-    { % snips.skill.play_previous_item_in_queue(snips.site_id);
-    snips.skill.set_to_previous_volume(snips.site_id) %}
-    - intent: addSong
-    action: |
-    { % snips.skill.add_song(snips.site_id);
-    snips.skill.set_to_previous_volume(snips.site_id) %}
-    - intent: getInfos
-    action: |
-    { %
-    snips.skill.set_to_previous_volume(snips.site_id);
-    snips.dialogue.speak("This is {} by {} on the album {}".format(*snips.skill.get_info(snips.site_id)))
-    %}
-    - intent: "*"
-    action: |
-    { %
-    snips.skill.set_to_previous_volume(snips.site_id);
-    %}
+    # @intent('playArtist')
+    # def play_artist(self, data):
+    #     if len(snips.intent.artist_name):
+    #         artist_name = snips.intent.artist_name[0]
+    #     snips.skill.play_artist(snips.site_id, artist_name)
+    #     snips.skill.set_to_previous_volume(snips.site_id)
+    # %}
+    # - intent: playSong
+    # action: |
+    # { %
+    # if len(snips.intent.song_name):
+    #     snips.skill.play_song(snips.site_id, snips.intent.song_name)
+    # snips.skill.set_to_previous_volume(snips.site_id)
+    # %}
+    # - intent: playAlbum
+    # action: |
+    # { %
+    # if len(snips.intent.album_name):
+    #     album_name = snips.intent.album_name[0]
+    # snips.skill.play_album(snips.site_id, album_name, _shuffle=(
+    #             len(snips.intent.album_lecture_mode) and snips.intent.album_lecture_mode[0] == "shuffle"))
+
+    # snips.skill.set_to_previous_volume(snips.site_id)
+    # %}
+    # - intent: resumeMusic
+    # action: |
+    # { % snips.skill.play(snips.site_id);
+    # snips.skill.set_to_previous_volume(snips.site_id) %}
+    # - intent: nextSong
+    # action: |
+    # { % snips.skill.play_next_item_in_queue(snips.site_id);
+    # snips.skill.set_to_previous_volume(snips.site_id) %}
+    # - intent: previousSong
+    # action: |
+    # { % snips.skill.play_previous_item_in_queue(snips.site_id);
+    # snips.skill.set_to_previous_volume(snips.site_id) %}
+    # - intent: addSong
+    # action: |
+    # { % snips.skill.add_song(snips.site_id);
+    # snips.skill.set_to_previous_volume(snips.site_id) %}
+    # - intent: getInfos
+    # action: |
+    # { %
+    # snips.skill.set_to_previous_volume(snips.site_id);
+    # snips.dialogue.speak("This is {} by {} on the album {}".format(*snips.skill.get_info(snips.site_id)))
+    # %}
+    # - intent: "*"
+    # action: |
+    # { %
+    # snips.skill.set_to_previous_volume(snips.site_id);
+    # %}

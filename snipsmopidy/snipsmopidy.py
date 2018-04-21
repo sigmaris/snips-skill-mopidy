@@ -4,13 +4,14 @@
 from __future__ import unicode_literals
 from functools import wraps
 import threading
+import time
 import traceback
 
 from fuzzywuzzy import fuzz
 from mpd import MPDClient
 from mpd import ConnectionError
-from spotify import SpotifyClient
-import time
+
+from .spotify import SpotifyClient
 
 MAX_VOLUME = 100
 GAIN = 4

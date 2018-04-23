@@ -12,7 +12,9 @@ LOG = logging.getLogger(__name__)
 
 def intent(name, namespace=None):
     def decorate(func):
-        func._handles_intent = getattr(func, '_handles_intent', []).append((name, namespace))
+        handles = getattr(func, '_handles_intent', [])
+        handles.append((name, namespace))
+        func._handles_intent = handles
         return func
     return decorate
 
@@ -37,10 +39,57 @@ def session_ended(func=None):
         return decorate
 
 
+class SessionManager(object):
+
+    def __init__(self, session_id, mqtt, listener):
+        self.session_id = session_id
+        self.mqtt = mqtt
+        self.ended = False
+        self.listener = listener
+        self.listener._register_session_end_handler(self._session_end_handler)
+
+    def continue_session(self, text, intent_filters=None):
+        if self.ended:
+            LOG.error("Trying to continue an already-ended session %s", self.session_id)
+            return
+
+        payload = {
+            'sessionId': self.session_id,
+            'text': text
+        }
+        if intent_filters:
+            payload['intentFilter'] = intent_filters
+        self.mqtt.publish(
+            'hermes/dialogueManager/continueSession',
+            payload=json.dumps(payload)
+        )
+
+    def end_session(self, text=None):
+        if self.ended:
+            LOG.error("Trying to end an already-ended session %s", self.session_id)
+            return
+
+        payload = {
+            'sessionId': self.session_id,
+        }
+        if text:
+            payload['text'] = text
+        self.mqtt.publish(
+            'hermes/dialogueManager/endSession',
+            payload=json.dumps(payload)
+        )
+        self.ended = True
+
+    def _session_end_handler(self, message):
+        if message.session_id == self.session_id:
+            self.ended = True
+            self.listener._unregister_session_end_handler(self._session_end_handler)
+
+
 HotwordDetected = collections.namedtuple('HotwordDetected', ('hotword_id', 'model_id', 'site_id'))
-IntentDetected = collections.namedtuple(
-    'IntentDetected', ('session_id', 'site_id', 'custom_data', 'input', 'intent_name', 'probability', 'slots')
-)
+IntentDetected = collections.namedtuple('IntentDetected', (
+    'session_id', 'site_id', 'custom_data', 'input', 'intent_name', 'probability', 'slots', 'session_manager'
+))
 Slot = collections.namedtuple('Slot', ('slot_name', 'raw_value', 'value', 'value_kind', 'range', 'entity', 'text'))
 Range = collections.namedtuple('Range', ('start', 'end'))
 SessionEnded = collections.namedtuple('SessionEnded', ('session_id', 'site_id', 'custom_data', 'reason', 'error'))
@@ -73,7 +122,7 @@ class SnipsListener(object):
 
         # Subscribing in on_connect() means that if we lose the connection and
         # reconnect then subscriptions will be renewed.
-        # TODO: only subscribe to recognized intents
+        # TODO: only subscribe to recognized intents?
         client.subscribe("hermes/intent/#")
         client.subscribe("hermes/hotword/+/detected")
         client.subscribe("hermes/dialogueManager/sessionEnded")
@@ -91,12 +140,19 @@ class SnipsListener(object):
     #     print(data)
     #     print(msg.topic+" "+str(msg.payload.decode()))
 
+    def _register_session_end_handler(self, handler):
+        self._session_ended_handlers.add(handler)
+
+    def _unregister_session_end_handler(self, handler):
+        self._session_ended_handlers.remove(handler)
+
     # The callback for when a PUBLISH message is received from the server.
     def _handle_intent(self, client, userdata, msg):
         LOG.debug(msg.topic+" "+str(msg.payload.decode()))
         data = json.loads(msg.payload.decode())
         intent_data = data['intent']
-        LOG.debug("data.sessionId="+data['sessionId'])
+        session_id = data['sessionId']
+        LOG.debug("data.sessionId="+str(session_id))
         LOG.debug("data.intent="+str(intent_data))
         LOG.debug("data.slots="+str(data['slots']))
 
@@ -108,8 +164,7 @@ class SnipsListener(object):
             # name with namespace
             lookup = (split_name[1], split_name[0])
 
-
-        LOG.debug("Looking for {} in {}".format(lookup, self._intent_handlers))
+        LOG.debug("Looking for {} in {}".format(lookup, self._intent_handlers.keys()))
         handlers = self._intent_handlers.get(lookup)
         if handlers is None and lookup[1] is not None:
             # Try again with no namespace
@@ -118,7 +173,7 @@ class SnipsListener(object):
 
         if handlers is not None:
             intent_obj = IntentDetected(
-                session_id=data['sessionId'],
+                session_id=session_id,
                 site_id=data['siteId'],
                 custom_data=data.get('customData'),
                 input=data['input'],
@@ -135,31 +190,41 @@ class SnipsListener(object):
                         text=data['input'][s['range']['start']:s['range']['end']]
                     )
                     for s in data.get('slots', [])
-                }
+                },
+                session_manager=SessionManager(session_id=session_id, mqtt=client, listener=self)
             )
 
             LOG.debug("Intent object: {!r}".format(intent_obj))
-            for h in handlers:
-                h(intent_obj)
+            for h in handlers.copy():
+                try:
+                    h(intent_obj)
+                except Exception as exc:
+                    LOG.exception("Exception in %s: %s", h, exc)
 
     def _handle_hotword_detected(self, client, userdata, msg):
         topic = msg.topic
         LOG.debug(topic+" "+str(msg.payload.decode()))
         _, _, hotword_id, _ = topic.split('/')
         data = json.loads(msg.payload.decode())
-        for h in self._hotword_detected_handlers:
-            h(HotwordDetected(hotword_id, data['modelId'], data['siteId']))
+        for h in self._hotword_detected_handlers.copy():
+            try:
+                h(HotwordDetected(hotword_id, data['modelId'], data['siteId']))
+            except Exception as exc:
+                LOG.exception("Exception in %s: %s", h, exc)
 
     def _handle_session_ended(self, client, userdata, msg):
         topic = msg.topic
         LOG.debug(topic+" "+str(msg.payload.decode()))
         data = json.loads(msg.payload.decode())
         termination = data['termination']
-        for h in self._session_ended_handlers:
-            h(SessionEnded(
-                data['sessionId'], data['siteId'], data.get('customData'),
-                termination['reason'], termination.get('error')
-            ))
+        for h in self._session_ended_handlers.copy():
+            try:
+                h(SessionEnded(
+                    data['sessionId'], data['siteId'], data.get('customData'),
+                    termination['reason'], termination.get('error')
+                ))
+            except Exception as exc:
+                LOG.exception("Exception in %s: %s", h, exc)
 
     # @intent('convertUnits', 'sigmaris')
     # def demo_intent(self, data):
@@ -267,9 +332,14 @@ class SnipsMopidyListener(SnipsListener):
     def set_to_low_volume(self, data):
         self.skill.set_to_low_volume(data.site_id)
 
+    @session_ended
+    def restore_volume(self, data):
+        self.skill.set_to_previous_volume(data.site_id)
+
     @intent('speakerInterrupt')
     def pause(self, data):
         self.skill.pause(data.site_id)
+        data.session_manager.end_session()
 
     @intent('volumeUp')
     def volume_up(self, data):
@@ -280,6 +350,7 @@ class SnipsMopidyListener(SnipsListener):
             self.skill.volume_up(data.site_id, volume_higher)
         else:
             self.skill.volume_up(data.site_id, None)
+        data.session_manager.end_session()
 
     @intent('volumeDown')
     def volume_down(self, data):
@@ -290,65 +361,64 @@ class SnipsMopidyListener(SnipsListener):
             self.skill.volume_down(data.site_id, volume_lower)
         else:
             self.skill.volume_down(data.site_id, None)
+        data.session_manager.end_session()
 
-    # @intent('playPlaylist')
-    # def play_playlist(self, data):
-    #     if 'playlist_name' in data.slots:
-    #         playlist_name = data.slots['playlist_name']
-    #     # playlist_lecture_mode = snips.intent.playlist_lecture_mode[0] if len(snips.intent.playlist_lecture_mode) else None
-    #     self.skill.play_playlist(data.site_id, playlist_name, _shuffle=(
-    #                 len(snips.intent.playlist_lecture_mode) and snips.intent.playlist_lecture_mode[0] == "shuffle"))
+    @intent('playPlaylist')
+    def play_playlist(self, data):
+        playlist_name = data.slots['playlist_name'].value
+        shuffle = ('playlist_lecture_mode' in data.slots
+                   and data.slots['playlist_lecture_mode'] == 'shuffle')
+        self.skill.play_playlist(data.site_id, playlist_name, shuffle=shuffle)
+        data.session_manager.end_session()
 
-    #     self.skill.set_to_previous_volume(snips.site_id)
+    @intent('playArtist')
+    def play_artist(self, data):
+        artist_name = data.slots['artist_name'].value
+        self.skill.play_artist(data.site_id, artist_name)
+        data.session_manager.end_session()
 
-    # @intent('playArtist')
-    # def play_artist(self, data):
-    #     if len(snips.intent.artist_name):
-    #         artist_name = snips.intent.artist_name[0]
-    #     snips.skill.play_artist(snips.site_id, artist_name)
-    #     snips.skill.set_to_previous_volume(snips.site_id)
-    # %}
-    # - intent: playSong
-    # action: |
-    # { %
-    # if len(snips.intent.song_name):
-    #     snips.skill.play_song(snips.site_id, snips.intent.song_name)
-    # snips.skill.set_to_previous_volume(snips.site_id)
-    # %}
-    # - intent: playAlbum
-    # action: |
-    # { %
-    # if len(snips.intent.album_name):
-    #     album_name = snips.intent.album_name[0]
-    # snips.skill.play_album(snips.site_id, album_name, _shuffle=(
-    #             len(snips.intent.album_lecture_mode) and snips.intent.album_lecture_mode[0] == "shuffle"))
+    @intent('playSong')
+    def play_song(self, data):
+        self.skill.play_song(data.site_id, data.slots['song_name'])
+        data.session_manager.end_session()
 
-    # snips.skill.set_to_previous_volume(snips.site_id)
-    # %}
-    # - intent: resumeMusic
-    # action: |
-    # { % snips.skill.play(snips.site_id);
-    # snips.skill.set_to_previous_volume(snips.site_id) %}
-    # - intent: nextSong
-    # action: |
-    # { % snips.skill.play_next_item_in_queue(snips.site_id);
-    # snips.skill.set_to_previous_volume(snips.site_id) %}
-    # - intent: previousSong
-    # action: |
-    # { % snips.skill.play_previous_item_in_queue(snips.site_id);
-    # snips.skill.set_to_previous_volume(snips.site_id) %}
-    # - intent: addSong
-    # action: |
-    # { % snips.skill.add_song(snips.site_id);
-    # snips.skill.set_to_previous_volume(snips.site_id) %}
-    # - intent: getInfos
-    # action: |
-    # { %
-    # snips.skill.set_to_previous_volume(snips.site_id);
-    # snips.dialogue.speak("This is {} by {} on the album {}".format(*snips.skill.get_info(snips.site_id)))
-    # %}
-    # - intent: "*"
-    # action: |
-    # { %
-    # snips.skill.set_to_previous_volume(snips.site_id);
-    # %}
+    @intent('playAlbum')
+    def play_album(self, data):
+        album_name = data.slots['album_name'].value
+        shuffle = ('album_lecture_mode' in data.slots
+                   and data.slots['album_lecture_mode'] == 'shuffle')
+        self.skill.play_album(data.site_id, album_name, shuffle=shuffle)
+        data.session_manager.end_session()
+
+    @intent('resumeMusic')
+    def resume(self, data):
+        self.skill.play(data.site_id)
+        data.session_manager.end_session()
+
+    @intent('nextSong')
+    def next_song(self, data):
+        success = self.skill.play_next_item_in_queue(data.site_id)
+        if success:
+            data.session_manager.end_session()
+        else:
+            data.session_manager.end_session("There is no next song.")
+
+    @intent('previousSong')
+    def prev_song(self, data):
+        success = self.skill.play_previous_item_in_queue(data.site_id)
+        if success:
+            data.session_manager.end_session()
+        else:
+            data.session_manager.end_session("There is no previous song.")
+
+    @intent('addSong')
+    def add_song(self, data):
+        self.skill.add_song(data.site_id)
+        data.session_manager.end_session()
+
+    @intent('getInfos')
+    def get_info(self, data):
+        self.skill.set_to_previous_volume(data.site_id)
+        data.session_manager.end_session(
+            "This is {} by {} on the album {}".format(*self.skill.get_info(data.site_id))
+        )

@@ -12,6 +12,5 @@ setup(
     test_suite="tests",
     keywords=['snips', 'mopidy'],
     packages=['snipsmopidy'],
-    package_data={'snipsmopidy': ['Snipsspec']},
     include_package_data=True,
 )

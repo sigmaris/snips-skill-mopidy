@@ -1,3 +1,5 @@
+import argparse
+import json
 import logging
 
 from snipslistener import SnipsListener, hotword_detected, intent, session_ended
@@ -107,3 +109,21 @@ class SnipsMopidyListener(SnipsListener):
         data.session_manager.end_session(
             "This is {} by {} on the album {}".format(*self.skill.get_info(data.site_id))
         )
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-c", "--config", help="Configuration JSON file", default="config.json")
+    args = parser.parse_args()
+    with open(args.config, 'r') as infile:
+        config = json.load(infile)
+        listener_args = {
+            "mqtt_host": config["mqtt_host"]
+        }
+        if 'mqtt_port' in config:
+            listener_args['mqtt_port'] = int(config['mqtt_port'])
+        if 'mopidy_rooms' in config:
+            assert isinstance(config['mopidy_rooms'], dict)
+            listener_args['mopidy_rooms'] = config['mopidy_rooms']
+        listener = SnipsMopidyListener(**listener_args)
+        listener.loop_forever()

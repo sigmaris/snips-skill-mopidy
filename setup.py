@@ -12,5 +12,7 @@ setup(
     test_suite="tests",
     keywords=['snips', 'mopidy'],
     packages=['snipsmopidy'],
-    include_package_data=True,
+    entry_points={
+        'console_scripts': ['snipsmopidy=snipsmopidy.snips_listener:main'],
+    }
 )

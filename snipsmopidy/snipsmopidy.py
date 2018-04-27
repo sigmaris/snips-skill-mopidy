@@ -65,7 +65,7 @@ class SnipsMopidy:
         while True:
             client = MPDClient()
             try:
-                client.connect(details['host'], details['port'])
+                client.connect(details['host'], details.get('port', 6600))
                 self.mopidy_instances[site_id] = client
                 break
             except Exception:

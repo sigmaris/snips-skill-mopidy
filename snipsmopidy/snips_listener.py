@@ -1,6 +1,7 @@
 import argparse
 import json
 import logging
+import logging.config
 
 from snipslistener import SnipsListener, hotword_detected, intent, session_ended
 
@@ -125,5 +126,7 @@ def main():
         if 'mopidy_rooms' in config:
             assert isinstance(config['mopidy_rooms'], dict)
             listener_args['mopidy_rooms'] = config['mopidy_rooms']
+        if 'logging_config' in config:
+            logging.config.dictConfig(config['logging_config'])
         listener = SnipsMopidyListener(**listener_args)
         listener.loop_forever()
